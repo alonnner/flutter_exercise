@@ -16,6 +16,7 @@ class GroceryList extends StatefulWidget {
 class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
   var _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -27,6 +28,14 @@ class _GroceryListState extends State<GroceryList> {
     final url = Uri.https(
         'flutter-prep-c32f7-default-rtdb.firebaseio.com', 'shopping-list.json');
     final response = await http.get(url);
+
+    //Once statusCode bigger than 400, that means something went wrong
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = "Failed to fetch data, please try again.";
+      });
+    }
+
     final Map<String, dynamic> listData = json.decode(response.body);
     final List<GroceryItem> loadedItems = [];
 
@@ -64,10 +73,21 @@ class _GroceryListState extends State<GroceryList> {
     // _loadItems();
   }
 
-  void _removeItem(GroceryItem item) {
+  void _removeItem(GroceryItem item) async {
+    final index = _groceryItems.indexOf(item);
     setState(() {
       _groceryItems.remove(item);
     });
+
+    final url = Uri.https('flutter-prep-c32f7-default-rtdb.firebaseio.com',
+        'shopping-list/${item.id}.json');
+    final resposne = await http.delete(url);
+    if (resposne.statusCode >= 400) {
+      setState(() {
+        _groceryItems.insert(index, item);
+      });
+    }
+    //we dont need await here, cuz I neednt its response
   }
 
   @override
@@ -106,6 +126,12 @@ class _GroceryListState extends State<GroceryList> {
           ),
         );
       });
+    }
+
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
+      );
     }
 
     return Scaffold(
